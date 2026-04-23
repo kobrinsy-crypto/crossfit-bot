@@ -271,28 +271,30 @@ def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Use webhook for cloud deployment, fallback to polling for local development
-    webhook_url = os.getenv("WEBHOOK_URL")
+    # Check if running on Railway (cloud) or local
+    # Railway sets PORT environment variable
     port = int(os.getenv("PORT", 8443))
 
-    if webhook_url:
-        print(f"Starting with webhook: {webhook_url}")
+    # Railway automatically provides the application URL
+    # We use webhook mode for cloud deployments
+    if os.getenv("RAILWAY_ENVIRONMENT_NAME") or port != 8443:
+        # Running on Railway or other cloud platform
+        print(f"Starting with webhook on port {port}")
         app.run_webhook(
             listen="0.0.0.0",
             port=port,
             url_path=TELEGRAM_TOKEN,
-            webhook_url=f"{webhook_url}/{TELEGRAM_TOKEN}"
+            webhook_url=f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN', 'localhost')}/{TELEGRAM_TOKEN}"
         )
     else:
+        # Local development - use polling
         print("Starting with polling (local development)")
-        # Fix for Python 3.14 compatibility
         import asyncio
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             app.run_polling(drop_pending_updates=True)
         except RuntimeError:
-            # Fallback for older Python versions
             app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
