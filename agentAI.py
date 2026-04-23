@@ -6,6 +6,7 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
+import httpx
 
 # Load environment variables from .env file
 load_dotenv()
@@ -13,12 +14,16 @@ load_dotenv()
 # Configuration from environment variables
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "YOUR_TELEGRAM_TOKEN_HERE")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "YOUR_OPENROUTER_API_KEY_HERE")
-MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/llama-3.1-8b-instruct:free")
+MODEL_NAME = os.getenv("MODEL_NAME", "openrouter/free")
+
+# Create a custom httpx client without proxies argument
+http_client = httpx.AsyncClient()
 
 # Initialize OpenRouter client (uses OpenAI-compatible API)
 client = AsyncOpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY
+    api_key=OPENROUTER_API_KEY,
+    http_client=http_client
 )
 
 # --- 1. ПАМЯТЬ ПОЛЬЗОВАТЕЛЕЙ ---
