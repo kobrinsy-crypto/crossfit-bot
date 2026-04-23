@@ -145,20 +145,59 @@ async def generate_ai_response(user_id, user_text):
             focus_groups = ["lower_push", "lower_pull", "core"] if target_weekday == 0 else ["upper_push", "upper_pull", "total"]
         else:
             focus_groups = ["upper_push", "upper_pull", "total"] if target_weekday == 0 else ["lower_push", "lower_pull", "core"]
-            
+
         power_pool = [k for k, v in EXERCISE_WEIGHTS.items() if v[0] >= 3 and v[1] in focus_groups]
-        
+
         if len(power_pool) < 4:
             power_pool = [k for k, v in EXERCISE_WEIGHTS.items() if v[0] >= 3]
 
+        # Track used exercises to avoid repetition
+        used_exercises = []
+
+        # Antagonist muscle group mapping
+        antagonist_map = {
+            "lower_push": ["lower_pull", "core", "total"],
+            "lower_pull": ["lower_push", "core", "total"],
+            "upper_push": ["upper_pull", "core", "total"],
+            "upper_pull": ["upper_push", "core", "total"],
+            "core": ["lower_push", "lower_pull", "upper_push", "upper_pull", "total"],
+            "total": ["lower_push", "lower_pull", "upper_push", "upper_pull", "core"]
+        }
+
         for i in range(1, 4 if current_format != "standard" else 5):
-            ex1, ex2 = random.sample(power_pool, 2)
+            # Filter pool to exclude used exercises
+            available_pool = [ex for ex in power_pool if ex not in used_exercises]
+
+            if len(available_pool) < 2:
+                # Reset if not enough exercises
+                available_pool = power_pool
+                used_exercises = []
+
+            # Select first exercise
+            ex1 = random.choice(available_pool)
+            group1 = EXERCISE_WEIGHTS[ex1][1]
+
+            # Find second exercise with antagonist muscle group
+            valid_second_exercises = [
+                ex for ex in available_pool
+                if ex != ex1 and EXERCISE_WEIGHTS[ex][1] in antagonist_map.get(group1, [])
+            ]
+
+            if not valid_second_exercises:
+                # Fallback: just avoid same exercise
+                valid_second_exercises = [ex for ex in available_pool if ex != ex1]
+
+            ex2 = random.choice(valid_second_exercises)
+
+            # Mark exercises as used
+            used_exercises.extend([ex1, ex2])
+
             w1, w2 = EXERCISE_WEIGHTS[ex1][0], EXERCISE_WEIGHTS[ex2][0]
             total_score = w1 + w2
-            
+
             rep1 = 8 if w1 == 5 else 12
             rep2 = 8 if w2 == 5 else 12
-            
+
             if current_format == "amrap":
                 duration = random.choice([8, 10, 12])
                 blocks_data.append(f"**БЛОК {i}**\nAMRAP {duration} МИНУТ:\n- {rep1} {ex1}\n- {rep2} {ex2}\n👉 Отдых 2 минуты между блоками")
