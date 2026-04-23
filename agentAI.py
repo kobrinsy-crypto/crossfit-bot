@@ -271,42 +271,16 @@ def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Check if running on Railway (cloud) or local
-    port = int(os.getenv("PORT", 8443))
-
-    # Railway sets RAILWAY_ENVIRONMENT_NAME when running in cloud
-    is_railway = os.getenv("RAILWAY_ENVIRONMENT_NAME") is not None
-    railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
-
-    if is_railway and railway_domain:
-        # Running on Railway with valid domain - use webhook mode
-        print(f"Starting with webhook on port {port}")
-        app.run_webhook(
-            listen="0.0.0.0",
-            port=port,
-            url_path=TELEGRAM_TOKEN,
-            webhook_url=f"https://{railway_domain}/{TELEGRAM_TOKEN}"
-        )
-    elif is_railway:
-        # Running on Railway but no domain yet - use polling temporarily
-        print(f"Starting with polling (waiting for domain on port {port})")
-        import asyncio
-        try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            app.run_polling(drop_pending_updates=True)
-        except RuntimeError:
-            app.run_polling(drop_pending_updates=True)
-    else:
-        # Local development - use polling
-        print("Starting with polling (local development)")
-        import asyncio
-        try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            app.run_polling(drop_pending_updates=True)
-        except RuntimeError:
-            app.run_polling(drop_pending_updates=True)
+    # Always use polling mode for simplicity and reliability
+    # Webhook can be set manually after deployment
+    print("Starting with polling mode")
+    import asyncio
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        app.run_polling(drop_pending_updates=True)
+    except RuntimeError:
+        app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
